@@ -1,0 +1,44 @@
+ALTER FUNCTION MoneyToPersianChar(@Number AS INT)
+	RETURNS NVARCHAR(MAX)
+AS
+BEGIN
+DECLARE @Below20 TABLE (ID INT IDENTITY(0,1), word NVARCHAR(10))
+DECLARE @Below100 TABLE (ID INT IDENTITY(2,1),word NVARCHAR(10))
+DECLARE @Below1000 TABLE (ID INT IDENTITY(1,1),word NVARCHAR(10))
+INSERT INTO @Below20(word) VALUES
+		(N'صفر'),(N'یک'),(N'دو'),(N'سه'),(N'چهار'),(N'پنج'),(N'شش'),(N'هفت'),(N'هشت'),(N'نه'),(N'ده'),
+		(N'یازده'),(N'دوازده'),(N'سیزده'),(N'چهارده'),(N'پانزده'),(N'شانزده'),(N'هفده'),(N'هجده'),(N'نوزده')
+INSERT INTO @Below100(word) VALUES
+		(N'بیست'),(N'سی'),(N'چهل'),(N'پنجاه'),(N'شصت'),(N'هفتاد'),(N'هشتاد'),(N'نود')
+INSERT INTO @Below1000(word) VALUES
+		(N'صد'),(N'دویست'),(N'سیصد'),(N'چهارصد'),(N'پانصد'),(N'ششصد'),(N'هفتصد'),(N'هشتصد'),(N'نهصد')
+DECLARE @RESULT NVARCHAR(MAX) =(
+SELECT CASE 
+			WHEN @NUMBER BETWEEN 0 AND 19 
+				THEN (SELECT word FROM @Below20 WHERE ID = @NUMBER)
+			WHEN  @NUMBER BETWEEN 20 AND 99 
+				THEN (SELECT word FROM @Below100 WHERE ID = (@NUMBER/10)) 
+					 + CASE WHEN @NUMBER%10 <> 0 THEN N' و '+ (SELECT word FROM @Below20 WHERE ID = @NUMBER%10) ELSE '' END 
+			WHEN  @NUMBER BETWEEN 100 AND 999 
+				THEN (SELECT word FROM @Below1000 WHERE ID = (@NUMBER/100)) 
+					 + CASE WHEN (@NUMBER%100)/10 <> 0 THEN N' و '+ (SELECT word FROM @Below100 WHERE ID = (@NUMBER%100)/10) ELSE '' END
+					 + CASE WHEN (@NUMBER%100)%10 <> 0 THEN N' و '+ (SELECT word FROM @Below20 WHERE ID = (@NUMBER%100)%10)  ELSE '' END
+		ELSE 'Invalid Number'
+END 
+)
+RETURN @RESULT
+END
+
+--------------------------
+
+
+DECLARE @NUMBER AS Bigint = 123000789123456
+DECLARE @LEN AS INT = (SELECT LEN(@NUMBER ))
+
+SELECT CASE WHEN @LEN BETWEEN 1 AND 3 THEN dbo.MoneyToPersianChar(@number)
+			WHEN @LEN BETWEEN 4 AND 6 THEN dbo.MoneyToPersianChar(@number/1000) +N' هزار '+ ISNULL(N' و ' +NULLIF(dbo.MoneyToPersianChar(@number%1000),N'صفر'),'')
+			WHEN @LEN BETWEEN 7 AND 9 THEN dbo.MoneyToPersianChar(@number/1000000) +N' میلیون '+ ISNULL(N' و ' +NULLIF(dbo.MoneyToPersianChar((@number%1000000)/1000),N'صفر') +N' هزار ','')+ ISNULL(N' و ' +NULLIF(dbo.MoneyToPersianChar((@number%1000000)%1000),N'صفر'),'')
+			WHEN @LEN BETWEEN 10 AND 12 THEN dbo.MoneyToPersianChar(@number/1000000000) +N' میلیارد'+ ISNULL(N' و ' +NULLIF(dbo.MoneyToPersianChar((@number%1000000000)/1000000),N'صفر') +N' میلیون','')+ ISNULL(N' و ' +NULLIF(dbo.MoneyToPersianChar(((@number%1000000000)%1000000)/1000),N'صفر') +N' هزار','')+ ISNULL(N' و ' + NULLIF(dbo.MoneyToPersianChar(((@number%1000000000)%1000000)%1000),N'صفر'),'')
+			WHEN @LEN BETWEEN 13 AND 15 THEN dbo.MoneyToPersianChar(@number/1000000000000) +N' تریلیون'+ ISNULL(N' و ' +NULLIF(dbo.MoneyToPersianChar((@number%1000000000000)/1000000000),N'صفر') +N' میلیارد','')+ ISNULL(N' و ' +NULLIF(dbo.MoneyToPersianChar(((@number%1000000000000)%1000000000)/1000000),N'صفر') +N' میلیون','')+ISNULL(N' و ' +NULLIF(dbo.MoneyToPersianChar((((@number%1000000000000)%1000000000)%1000000)/1000),N'صفر') +N' هزار','')+ ISNULL(N' و ' + NULLIF(dbo.MoneyToPersianChar((((@number%1000000000000)%1000000000)%1000000)%1000),N'صفر'),'')
+			END
+
